@@ -3,453 +3,1343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能车牌识别系统 | YOLOv8 + CNN</title>
-    <!-- 引入Tailwind CSS（无需本地安装，直接在线使用） -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入Font Awesome图标（用于上传、加载、汽车图标） -->
-    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-    <!-- 自定义配置：科技蓝主色调 -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#165DFF',
-                        secondary: '#36D399',
-                        neutral: '#F3F4F6',
-                        dark: '#1E293B'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                }
+    <title>智能车牌识别</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+        }
+
+        body {
+            background-color: #0a0e17;
+            background-image:
+                linear-gradient(rgba(25, 35, 55, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(25, 35, 55, 0.15) 1px, transparent 1px);
+            background-size: 40px 40px;
+            color: #e0e6ed;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 300px;
+            background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .navbar {
+            background-color: rgba(15, 23, 42, 0.95);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            border-bottom: 1px solid rgba(100, 120, 180, 0.2);
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .logo-text h1 {
+            font-size: 18px;
+            color: #63b3ed;
+            font-weight: 600;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: #a0aec0;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .tab-btn.active {
+            background: rgba(99, 102, 241, 0.2);
+            color: #6366f1;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 320px 1fr 280px;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 5;
+            align-items: stretch;
+        }
+
+        .history-container {
+            grid-template-columns: 1fr !important;
+        }
+
+        #workspace-content {
+            display: contents;
+        }
+
+        .upload-card, .settings-card, .result-card, .history-card, .stats-card, .info-card {
+            background: rgba(20, 30, 50, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(80, 100, 160, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .center-panel {
+            height: 100%;
+        }
+
+        .result-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .right-decor-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: 100%;
+        }
+
+        .card-title {
+            font-size: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(100, 120, 180, 0.3);
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(transparent, rgba(99, 102, 241, 0.1), transparent 30%);
+            animation: rotate 4s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+
+        .upload-area:hover {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .upload-icon-wrapper {
+            width: 60px;
+            height: 60px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+        }
+
+        .upload-icon {
+            font-size: 24px;
+            color: #6366f1;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .upload-subtext {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 16px;
+        }
+
+        .upload-tip {
+            font-size: 12px;
+            color: #4a5568;
+        }
+
+        .progress-container {
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #a0aec0;
+        }
+
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 10px;
+            background: rgba(100, 120, 180, 0.15);
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4c1d95, #6366f1, #8b5cf6);
+            background-size: 200% 100%;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .start-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4c1d95, #6366f1);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            opacity: 0.5;
+        }
+
+        .start-btn:enabled {
+            opacity: 1;
+        }
+
+        .start-btn:enabled:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .result-area {
+            background: rgba(15, 25, 45, 0.6);
+            border-radius: 10px;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #718096;
+            flex-direction: column;
+        }
+
+        .placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .placeholder-icon {
+            font-size: 40px;
+            opacity: 0.3;
+        }
+
+        .result-content {
+            width: 100%;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .result-media {
+            max-width: 100%;
+            max-height: 60vh;
+            object-fit: contain;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            align-self: center;
+        }
+
+        .plate-info {
+            background: rgba(99, 102, 241, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            margin-top: auto;
+        }
+
+        .plate-number {
+            font-size: 24px;
+            color: #63b3ed;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .plate-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .plate-tag {
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid #6366f1;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 18px;
+            color: #63b3ed;
+            font-weight: bold;
+        }
+
+        .process-info {
+            margin-top: 12px;
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .video-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 16px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+            color: #10b981;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            align-self: center;
+        }
+
+        .video-link:hover {
+            background: rgba(16, 185, 129, 0.3);
+        }
+
+        .stats-card .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(80, 100, 160, 0.2);
+        }
+
+        .stats-card .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #a0aec0;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            color: #63b3ed;
+            font-weight: bold;
+        }
+
+        .info-card .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .info-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6366f1;
+        }
+
+        .info-text {
+            font-size: 13px;
+            color: #a0aec0;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .clear-btn {
+            padding: 8px 16px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .clear-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .history-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .history-item {
+            background: rgba(30, 40, 60, 0.6);
+            border: 1px solid rgba(100, 120, 180, 0.2);
+            border-radius: 10px;
+            padding: 16px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .history-item:hover {
+            border-color: #6366f1;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .history-type-badge {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .type-image {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .type-video {
+            background: rgba(139, 92, 246, 0.2);
+            color: #8b5cf6;
+        }
+
+        .history-time {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .history-plates {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .history-plate-tag {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #63b3ed;
+            font-weight: bold;
+        }
+
+        .history-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .view-btn {
+            padding: 6px 12px;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid #6366f1;
+            color: #6366f1;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .view-btn:hover {
+            background: rgba(99, 102, 241, 0.3);
+        }
+
+        .delete-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: none;
+            color: #718096;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .delete-btn:hover {
+            color: #ef4444;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .modal-content {
+            background: rgba(20, 30, 50, 0.95);
+            border: 1px solid rgba(100, 120, 180, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: transparent;
+            border: none;
+            color: #718096;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: #e0e6ed;
+        }
+
+        .modal-media {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            .center-panel {
+                grid-column: auto;
+                grid-row: auto;
+            }
+            .right-decor-panel {
+                display: none;
             }
         }
-    </script>
-    <style type="text/tailwindcss">
-        @layer utilities {
-            /* 磨砂玻璃效果 */
-            .backdrop-blur {
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
-            }
-            /* 加载动画 */
-            .pulse {
-                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-            }
-            @keyframes pulse {
-                0%, 100% {
-                    opacity: 1;
-                }
-                50% {
-                    opacity: 0.5;
-                }
-            }
-            /* 车牌结果高亮 */
-            .plate-highlight {
-                background: linear-gradient(120deg, #FFF3C7 0%, #FFE898 100%);
-                border: 2px solid #F59E0B;
-                box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
-            }
-            /* 视频预览样式 */
-            .video-preview {
-                max-width: 100%;
-                border-radius: 0.5rem;
-                border: 1px solid #e5e7eb;
-            }
-            /* 关键帧预览样式 */
-            .frame-preview {
-                max-width: 100%;
-                border-radius: 0.5rem;
-                border: 1px solid #e5e7eb;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
+
+        @keyframes pulse {
+            0%,100% { opacity:1; }
+            50% { opacity:0.5; }
         }
     </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 font-sans text-dark">
-    <!-- 顶部导航栏 -->
-    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur shadow-sm">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <i class="fa fa-car text-primary text-2xl"></i>
-                <h1 class="text-xl font-bold text-primary">智能车牌识别系统</h1>
-            </div>
-            <div class="text-sm text-gray-500 hidden md:inline">
-                基于 YOLOv8 + CNN 深度学习模型 | 支持图片/视频识别
+<body>
+    <header class="navbar">
+        <div class="logo">
+            <div class="logo-icon">🚗</div>
+            <div class="logo-text">
+                <h1>智能车牌识别</h1>
+                <p>视频车牌自动检测识别系统</p>
             </div>
         </div>
-    </nav>
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="image">🖼️ 图片识别</button>
+            <button class="tab-btn" data-tab="video">🎬 视频识别</button>
+            <button class="tab-btn" data-tab="history">🔄 识别记录</button>
+        </nav>
+    </header>
 
-    <!-- 主内容区 -->
-    <main class="container mx-auto px-4 py-8 md:py-16">
-        <div class="max-w-5xl mx-auto">
-            <!-- 核心功能卡片 -->
-            <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-8">
-                <div class="text-center mb-8">
-                    <h2 class="text-2xl md:text-3xl font-bold mb-2">上传图片/视频识别车牌</h2>
-                    <p class="text-gray-500 max-w-2xl mx-auto">
-                        图片支持 PNG、JPG、JPEG 格式（≤5MB）；视频支持 MP4、AVI、MOV 格式（≤100MB）
-                    </p>
-                </div>
-
-                <!-- 上传类型切换 -->
-                <div class="flex justify-center mb-6 gap-4">
-                    <button id="img-tab" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                        <i class="fa fa-file-image-o mr-2"></i>图片识别
-                    </button>
-                    <button id="video-tab" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
-                        <i class="fa fa-file-video-o mr-2"></i>视频识别
-                    </button>
-                </div>
-
-                <!-- 上传区域（核心交互） -->
-                <div id="upload-area" class="border-2 border-dashed border-primary/30 rounded-xl bg-primary/5 transition-all duration-300 hover:bg-primary/10 mb-8">
-                    <div class="p-12 text-center" id="upload-content">
-                        <i class="fa fa-cloud-upload text-5xl text-primary mb-4"></i>
-                        <p class="mb-2 text-gray-600" id="upload-tip">点击选择图片或拖放至此处</p>
-                        <p class="text-xs text-gray-400" id="upload-type-tip">支持 PNG、JPG、JPEG（≤5MB）</p>
-                        <input type="file" id="file-input" accept="image/png,image/jpg,image/jpeg" class="hidden" />
-                        <button onclick="document.getElementById('file-input').click()" class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                            选择文件
-                        </button>
+    <main class="main-container" id="main-container">
+        <div id="workspace-content">
+            <div class="left-panel">
+                <div class="upload-card">
+                    <h2 class="card-title">
+                        <span class="icon">⬆️</span> <span id="upload-title">上传图片</span>
+                    </h2>
+                    <div id="upload-area" class="upload-area">
+                        <div class="upload-icon-wrapper">
+                            <div class="upload-icon">☁️</div>
+                        </div>
+                        <p class="upload-text">拖拽文件到此处</p>
+                        <p class="upload-subtext">或点击选择文件</p>
+                        <p class="upload-tip" id="upload-tip">支持 JPG, PNG, JPEG</p>
+                        <input type="file" id="file-input" accept="image/*" hidden>
                     </div>
+                </div>
 
-                    <!-- 预览容器（图片/视频） -->
-                    <div id="preview-container" class="hidden p-4">
-                        <div class="relative">
-                            <!-- 图片预览 -->
-                            <img id="preview-image" class="max-w-full h-auto rounded-lg border border-gray-200 hidden" />
-                            <!-- 视频预览 -->
-                            <video id="preview-video" class="video-preview hidden" controls></video>
-                            <button id="reset-upload" class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition-colors">
-                                <i class="fa fa-times"></i>
-                            </button>
+                <div class="settings-card">
+                    <h2 class="card-title">
+                        <span class="icon">⚙️ 识别设置</span>
+                    </h2>
+                    <div class="progress-container" id="progress-container">
+                        <div class="progress-label">
+                            <span id="progress-text">正在处理...</span>
+                            <span id="progress-percent">0%</span>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar" id="progress-bar"></div>
+                        </div>
+                    </div>
+                    <button id="start-btn" class="start-btn" disabled>▶️ 开始识别</button>
+                </div>
+
+                <div class="info-card">
+                    <h2 class="card-title">🖥️ 硬件运行状态</h2>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="display:flex; justify-content:space-between; font-size:13px;">
+                            <span>GPU 使用率</span>
+                            <span style="color:#63b3ed;">31%</span>
+                        </div>
+                        <div style="width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
+                            <div style="width:31%; height:100%; background:linear-gradient(90deg, #6366f1, #8b5cf6);"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:13px; margin-top:5px;">
+                            <span>内存占用</span>
+                            <span style="color:#10b981;">4.2G / 16G</span>
+                        </div>
+                        <div style="width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
+                            <div style="width:26%; height:100%; background:linear-gradient(90deg, #10b981, #34d399);"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 识别按钮（默认隐藏） -->
-                <button id="recognize-btn" class="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 font-medium hidden">
-                    <i class="fa fa-search"></i>
-                    开始识别
-                </button>
-
-                <!-- 加载中状态（默认隐藏） -->
-                <div id="loading-state" class="w-full py-3 rounded-lg bg-neutral flex items-center justify-center gap-2 font-medium hidden pulse">
-                    <i class="fa fa-spinner fa-spin"></i>
-                    <span id="loading-text">模型推理中...请稍候</span>
+                <div class="info-card">
+                    <h2 class="card-title">💡 使用提示</h2>
+                    <div class="info-item">
+                        <div class="info-icon">📁</div>
+                        <div class="info-text">支持 JPG/PNG/MP4 等格式</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-icon">⚡</div>
+                        <div class="info-text">单张图片识别耗时约 0.2 秒</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-icon">🎥</div>
+                        <div class="info-text">视频支持逐帧检测车牌</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 识别结果卡片（默认隐藏） -->
-            <div id="result-card" class="hidden bg-white rounded-2xl shadow-xl p-6 md:p-8">
-                <div class="flex flex-col md:flex-row gap-8">
-                    <!-- 左侧：结果预览（图片/视频关键帧） -->
-                    <div class="md:w-1/2">
-                        <h3 class="text-lg font-semibold mb-3 text-gray-700">识别结果预览</h3>
-                        <div class="border border-gray-200 rounded-lg overflow-hidden">
-                            <!-- 图片/视频关键帧预览 -->
-                            <img id="result-image" class="w-full h-auto hidden" />
-                            <!-- 视频关键帧预览（优先显示） -->
-                            <img id="result-frame" class="frame-preview w-full h-auto hidden" />
-                            <!-- 原视频预览（次要） -->
-                            <video id="result-video" class="video-preview hidden" controls></video>
-                            <!-- 提示文字 -->
-                            <div id="video-tip" class="p-4 text-center text-gray-500 hidden">
-                                <i class="fa fa-info-circle mr-2"></i>
-                                以下为视频中最清晰帧的识别结果，完整视频可点击下方播放
-                            </div>
+            <div class="center-panel">
+                <div class="result-card">
+                    <h2 class="card-title">
+                        <span class="icon">👁️ 识别结果</span>
+                    </h2>
+                    <div id="result-area" class="result-area">
+                        <div class="placeholder">
+                            <div class="placeholder-icon">🖼️</div>
+                            <p>上传文件并识别</p>
                         </div>
-                        <!-- 视频播放按钮（仅视频识别显示） -->
-                        <button id="play-video-btn" class="mt-4 w-full py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 font-medium hidden">
-                            <i class="fa fa-play-circle"></i>
-                            播放完整标注视频
-                        </button>
                     </div>
+                </div>
+            </div>
 
-                    <!-- 右侧：识别信息 -->
-                    <div class="md:w-1/2 flex flex-col justify-center">
-                        <h3 class="text-lg font-semibold mb-4 text-gray-700">识别结果</h3>
-
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-500 mb-2">识别到的车牌</label>
-                            <div id="plate-result" class="plate-highlight text-2xl md:text-3xl font-mono font-bold text-orange-600 rounded-lg px-4 py-3 text-center whitespace-pre-wrap"></div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-neutral rounded-lg p-4">
-                                <label class="block text-sm font-medium text-gray-500 mb-1">识别耗时</label>
-                                <div id="time-cost" class="font-semibold text-dark"></div>
-                            </div>
-                            <div class="bg-neutral rounded-lg p-4">
-                                <label class="block text-sm font-medium text-gray-500 mb-1">文件名称</label>
-                                <div id="file-name" class="font-semibold text-dark text-sm truncate"></div>
-                            </div>
-                        </div>
-
-                        <button id="another-recognize" class="mt-6 py-3 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors flex items-center justify-center gap-2 font-medium">
-                            <i class="fa fa-refresh"></i>
-                            识别另一文件
-                        </button>
+            <div class="right-decor-panel">
+                <div style="background: linear-gradient(135deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); padding: 14px 18px; border-radius: 12px; border: 1px solid rgba(99,102,241,0.2); display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite;"></div>
+                        <span style="font-size:13px; color:#a0aec0;">系统正常运行中</span>
                     </div>
+                    <span style="font-size:12px; color:#63b3ed;">v2.4.1</span>
+                </div>
+
+                <div class="stats-card" style="position: relative; overflow: hidden;">
+                    <div style="position: absolute; top:0;left:0;right:0;bottom:0; background: linear-gradient(135deg, rgba(99,102,241,0.05), transparent); pointer-events: none;"></div>
+                    <h2 class="card-title">📡 实时识别仪表盘</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div style="background: rgba(15,23,42,0.6); padding: 12px; border-radius: 8px; text-align: center;">
+                            <div style="font-size:12px; color:#718096;">本次耗时</div>
+                            <div style="font-size:18px; font-weight:bold; color:#60a5fa;" id="dash-speed">0 ms</div>
+                        </div>
+                        <div style="background: rgba(15,23,42,0.6); padding: 12px; border-radius: 8px; text-align: center;">
+                            <div style="font-size:12px; color:#718096;">识别成功率</div>
+                            <div style="font-size:18px; font-weight:bold; color:#a78bfa;" id="dash-rate">0 %</div>
+                        </div>
+                        <div style="background: rgba(15,23,42,0.6); padding: 12px; border-radius: 8px; text-align: center;">
+                            <div style="font-size:12px; color:#718096;">今日识别</div>
+                            <div style="font-size:18px; font-weight:bold; color:#34d399;" id="dash-today">0</div>
+                        </div>
+                        <div style="background: rgba(15,23,42,0.6); padding: 12px; border-radius: 8px; text-align: center;">
+                            <div style="font-size:12px; color:#718096;">累计识别</div>
+                            <div style="font-size:18px; font-weight:bold; color:#f472b6;" id="dash-total">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-card">
+                    <h2 class="card-title">📊 识别统计</h2>
+                    <div class="stat-item">
+                        <span class="stat-label">今日识别</span>
+                        <span class="stat-value" id="today-count">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">累计识别</span>
+                        <span class="stat-value" id="total-count">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">识别成功率</span>
+                        <span class="stat-value" id="success-rate">--</span>
+                    </div>
+                </div>
+
+                <div class="info-card" style="position:relative; overflow:hidden;">
+                    <h2 class="card-title">📝 实时识别日志</h2>
+                    <div style="height:140px; overflow-y:auto; padding-right:5px;" id="real-log-list">
+                        <div style="font-size:12px; color:#718096;">[系统] 等待识别任务...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="history-content" style="display: none; width: 100%;">
+            <div class="history-card">
+                <div class="history-header">
+                    <h2 class="card-title">
+                        <span class="icon">🔄 识别记录</span>
+                    </h2>
+                    <button class="clear-btn" id="clear-history-btn">🗑️ 清空所有记录</button>
+                </div>
+                <div id="history-list" class="history-list">
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- 页脚 -->
-    <footer class="bg-dark text-white/70 py-6 mt-16">
-        <div class="container mx-auto px-4 text-center text-sm">
-            <p>© 2026 智能车牌识别系统 | 基于 YOLOv8 + CNN 构建 | 支持图片/视频识别</p>
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" id="modal-close">&times;</button>
+            <div id="modal-body"></div>
         </div>
-    </footer>
+    </div>
 
     <script>
-        // 核心变量
-        let selectedFile = null;
-        let fileType = 'image'; // 默认图片类型
-        let videoResultUrl = ""; // 存储视频结果URL
-        const fileInput = document.getElementById('file-input');
-        const uploadArea = document.getElementById('upload-area');
-        const uploadContent = document.getElementById('upload-content');
-        const uploadTip = document.getElementById('upload-tip');
-        const uploadTypeTip = document.getElementById('upload-type-tip');
-        const previewContainer = document.getElementById('preview-container');
-        const previewImage = document.getElementById('preview-image');
-        const previewVideo = document.getElementById('preview-video');
-        const resetUpload = document.getElementById('reset-upload');
-        const recognizeBtn = document.getElementById('recognize-btn');
-        const loadingState = document.getElementById('loading-state');
-        const loadingText = document.getElementById('loading-text');
-        const resultCard = document.getElementById('result-card');
-        const resultImage = document.getElementById('result-image');
-        const resultFrame = document.getElementById('result-frame'); // 视频关键帧
-        const resultVideo = document.getElementById('result-video');
-        const videoTip = document.getElementById('video-tip');
-        const playVideoBtn = document.getElementById('play-video-btn');
-        const plateResult = document.getElementById('plate-result');
-        const timeCost = document.getElementById('time-cost');
-        const fileName = document.getElementById('file-name');
-        const anotherRecognize = document.getElementById('another-recognize');
-        const imgTab = document.getElementById('img-tab');
-        const videoTab = document.getElementById('video-tab');
+        document.addEventListener('DOMContentLoaded', function() {
+            const API_URL = '/upload';
+            const RECORDS_API_URL = '/api/records';
+            const FILE_PARAM_NAME = 'file';
 
-        // 1. 切换上传类型（图片/视频）
-        imgTab.addEventListener('click', () => {
-            fileType = 'image';
-            imgTab.classList.remove('bg-gray-200', 'text-gray-700');
-            imgTab.classList.add('bg-primary', 'text-white');
-            videoTab.classList.remove('bg-primary', 'text-white');
-            videoTab.classList.add('bg-gray-200', 'text-gray-700');
-            fileInput.accept = 'image/png,image/jpg,image/jpeg';
-            uploadTip.textContent = '点击选择图片或拖放至此处';
-            uploadTypeTip.textContent = '支持 PNG、JPG、JPEG（≤5MB）';
-            resetUploadState();
-        });
+            let currentMode = 'image';
+            let selectedFile = null;
+            let progressInterval = null;
+            let historyRecords = [];
 
-        videoTab.addEventListener('click', () => {
-            fileType = 'video';
-            videoTab.classList.remove('bg-gray-200', 'text-gray-700');
-            videoTab.classList.add('bg-primary', 'text-white');
-            imgTab.classList.remove('bg-primary', 'text-white');
-            imgTab.classList.add('bg-gray-200', 'text-gray-700');
-            fileInput.accept = 'video/mp4,video/avi,video/mov';
-            uploadTip.textContent = '点击选择视频或拖放至此处';
-            uploadTypeTip.textContent = '支持 MP4、AVI、MOV（≤100MB）';
-            resetUploadState();
-        });
+            const mainContainer = document.getElementById('main-container');
+            const workspaceContent = document.getElementById('workspace-content');
+            const historyContent = document.getElementById('history-content');
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+            const uploadTitle = document.getElementById('upload-title');
+            const uploadTip = document.getElementById('upload-tip');
+            const startBtn = document.getElementById('start-btn');
+            const resultArea = document.getElementById('result-area');
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const progressPercent = document.getElementById('progress-percent');
+            const progressText = document.getElementById('progress-text');
+            const historyList = document.getElementById('history-list');
+            const clearHistoryBtn = document.getElementById('clear-history-btn');
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalBody = document.getElementById('modal-body');
+            const modalClose = document.getElementById('modal-close');
+            const todayCountEl = document.getElementById('today-count');
+            const totalCountEl = document.getElementById('total-count');
+            const successRateEl = document.getElementById('success-rate');
 
-        // 2. 文件选择事件
-        fileInput.addEventListener('change', handleFileSelect);
+            // 页面加载时先加载历史记录
+            loadHistoryFromDB();
+            updateStats();
 
-        // 3. 拖放事件
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('bg-primary/20');
-        });
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    const tab = this.dataset.tab;
+                    if (tab === 'image') {
+                        switchMode('image');
+                        showWorkspace();
+                    } else if (tab === 'video') {
+                        switchMode('video');
+                        showWorkspace();
+                    } else if (tab === 'history') {
+                        showHistory();
+                    }
+                });
+            });
 
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('bg-primary/20');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('bg-primary/20');
-            if (e.dataTransfer.files.length > 0) {
-                handleFileSelect({ target: { files: e.dataTransfer.files } });
-            }
-        });
-
-        // 4. 重置上传
-        resetUpload.addEventListener('click', resetUploadState);
-
-        // 5. 开始识别
-        recognizeBtn.addEventListener('click', startRecognition);
-
-        // 6. 识别另一张
-        anotherRecognize.addEventListener('click', resetUploadState);
-
-        // 7. 播放完整视频
-        playVideoBtn.addEventListener('click', () => {
-            resultFrame.classList.add('hidden');
-            videoTip.classList.add('hidden');
-            resultVideo.classList.remove('hidden');
-            resultVideo.src = videoResultUrl;
-            playVideoBtn.classList.add('hidden');
-        });
-
-        // 处理文件选择
-        function handleFileSelect(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            // 校验文件类型
-            if (fileType === 'image') {
-                const validTypes = ['image/png', 'image/jpg', 'image/jpeg'];
-                if (!validTypes.includes(file.type)) {
-                    alert('请上传 PNG、JPG 或 JPEG 格式的图片！');
-                    return;
-                }
-                // 校验文件大小（5MB）
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('图片大小不能超过 5MB！');
-                    return;
-                }
-            } else {
-                const validTypes = ['video/mp4', 'video/avi', 'video/mov'];
-                if (!validTypes.includes(file.type)) {
-                    alert('请上传 MP4、AVI 或 MOV 格式的视频！');
-                    return;
-                }
-                // 校验文件大小（100MB）
-                if (file.size > 100 * 1024 * 1024) {
-                    alert('视频大小不能超过 100MB！');
-                    return;
-                }
+            function showWorkspace() {
+                workspaceContent.style.display = 'contents';
+                historyContent.style.display = 'none';
+                mainContainer.classList.remove('history-container');
             }
 
-            selectedFile = file;
-            // 显示预览
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                uploadContent.classList.add('hidden');
-                previewContainer.classList.remove('hidden');
-                recognizeBtn.classList.remove('hidden');
+            function showHistory() {
+                workspaceContent.style.display = 'none';
+                historyContent.style.display = 'block';
+                mainContainer.classList.add('history-container');
+                renderHistory();
+            }
 
-                if (fileType === 'image') {
-                    previewImage.src = event.target.result;
-                    previewImage.classList.remove('hidden');
-                    previewVideo.classList.add('hidden');
+            function switchMode(mode) {
+                currentMode = mode;
+                selectedFile = null;
+                startBtn.disabled = true;
+
+                if (mode === 'image') {
+                    uploadTitle.textContent = '上传图片';
+                    uploadTip.textContent = '支持 JPG, PNG, JPEG, BMP';
+                    fileInput.accept = 'image/png,image/jpg,image/jpeg,image/bmp';
                 } else {
-                    previewVideo.src = event.target.result;
-                    previewVideo.classList.remove('hidden');
-                    previewImage.classList.add('hidden');
+                    uploadTitle.textContent = '上传视频';
+                    uploadTip.textContent = '支持 MP4, AVI, MOV (最大100MB)';
+                    fileInput.accept = 'video/mp4,video/avi,video/quicktime';
+                }
+
+                resetUploadArea();
+                // 切换模式时也清空中间结果区域
+                resetResultArea();
+            }
+
+            function resetUploadArea() {
+                uploadArea.innerHTML = `
+                    <div class="upload-icon-wrapper">
+                        <div class="upload-icon">☁️</div>
+                    </div>
+                    <p class="upload-text">拖拽文件到此处</p>
+                    <p class="upload-subtext">或点击选择文件</p>
+                    <p class="upload-tip" id="upload-tip">${currentMode === 'image' ? '支持 JPG, PNG, JPEG, BMP' : '支持 MP4, AVI, MOV'}</p>
+                `;
+            }
+
+            // ===================== 新增：重置中间结果区域 =====================
+            function resetResultArea() {
+                resultArea.innerHTML = `
+                    <div class="placeholder">
+                        <div class="placeholder-icon">${currentMode === 'image' ? '🖼️' : '🎬'}</div>
+                        <p>上传文件并点击开始识别</p>
+                    </div>
+                `;
+            }
+
+            // ===================== 新增：在中间区域显示上传的文件预览 =====================
+            function showUploadPreviewInResult(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (currentMode === 'image') {
+                        resultArea.innerHTML = `
+                            <div class="result-content">
+                                <img src="${e.target.result}" class="result-media" alt="待识别图片">
+                                <div class="plate-info">
+                                    <p style="font-size: 14px; color: #718096; margin-bottom: 12px;">点击下方"开始识别"按钮进行车牌检测</p>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        resultArea.innerHTML = `
+                            <div class="result-content">
+                                <video src="${e.target.result}" class="result-media" controls></video>
+                                <div class="plate-info">
+                                    <p style="font-size: 14px; color: #718096; margin-bottom: 12px;">点击下方"开始识别"按钮进行车牌检测</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    selectedFile = e.target.files[0];
+                    updateUploadPreview(selectedFile);
+                    // 选择文件后立即在中间区域显示预览
+                    showUploadPreviewInResult(selectedFile);
+                    startBtn.disabled = false;
+                }
+            });
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#6366f1';
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.borderColor = 'rgba(100, 120, 180, 0.3)';
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = 'rgba(100, 120, 180, 0.3)';
+                if (e.dataTransfer.files.length > 0) {
+                    selectedFile = e.dataTransfer.files[0];
+                    updateUploadPreview(selectedFile);
+                    // 拖拽文件后立即在中间区域显示预览
+                    showUploadPreviewInResult(selectedFile);
+                    startBtn.disabled = false;
+                }
+            });
+
+            function updateUploadPreview(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (currentMode === 'image') {
+                        uploadArea.innerHTML = `
+                            <img src="${e.target.result}" style="max-width: 100%; max-height: 200px; border-radius: 8px;">
+                            <p style="margin-top: 12px; font-size: 14px; color: #a0aec0;">${file.name}</p>
+                        `;
+                    } else {
+                        uploadArea.innerHTML = `
+                            <video src="${e.target.result}" style="max-width: 100%; max-height: 200px; border-radius: 8px;" controls></video>
+                            <p style="margin-top: 12px; font-size: 14px; color: #a0aec0;">${file.name}</p>
+                        `;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function startProgressAnimation(isVideo) {
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressPercent.textContent = '0%';
+
+                if (isVideo) {
+                    progressText.textContent = '正在处理视频（逐帧检测中）...';
+                } else {
+                    progressText.textContent = '正在检测车牌...';
+                }
+
+                let currentProgress = 0;
+                const targetProgress = isVideo ? 90 : 85;
+                const increment = isVideo ? 2 : 4;
+                const interval = isVideo ? 150 : 100;
+
+                if (progressInterval) clearInterval(progressInterval);
+
+                progressInterval = setInterval(() => {
+                    if (currentProgress < targetProgress) {
+                        currentProgress += Math.random() * increment;
+                        if (currentProgress > targetProgress) currentProgress = targetProgress;
+
+                        progressBar.style.width = currentProgress + '%';
+                        progressPercent.textContent = Math.floor(currentProgress) + '%';
+                    }
+                }, interval);
+            }
+
+            function finishProgress() {
+                if (progressInterval) clearInterval(progressInterval);
+
+                progressBar.style.width = '100%';
+                progressPercent.textContent = '100%';
+                progressText.textContent = '处理完成！';
+
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 800);
+            }
+
+            function resetProgress() {
+                if (progressInterval) clearInterval(progressInterval);
+                progressContainer.style.display = 'none';
+                progressBar.style.width = '0%';
+                progressPercent.textContent = '0%';
+            }
+
+            startBtn.addEventListener('click', async function() {
+                if (!selectedFile) return;
+
+                const formData = new FormData();
+                formData.append(FILE_PARAM_NAME, selectedFile);
+
+                startBtn.textContent = '⏳ 识别中...';
+                startBtn.disabled = true;
+                startProgressAnimation(currentMode === 'video');
+
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    finishProgress();
+
+                    if (data.success) {
+                        // 识别成功后重新加载历史记录
+                        await loadHistoryFromDB();
+                        updateStats();
+                    }
+
+                    displayResult(data);
+                } catch (error) {
+                    console.error('请求错误:', error);
+                    resetProgress();
+                    resultArea.innerHTML = `
+                        <div style="color: #e53e3e; padding: 20px;">
+                            <p style="font-size: 16px;">❌ 识别失败</p>
+                            <p style="font-size: 12px; margin-top: 8px;">请检查后端控制台报错信息</p>
+                        </div>
+                    `;
+                } finally {
+                    startBtn.textContent = '▶️ 开始识别';
+                    startBtn.disabled = false;
+                }
+            });
+
+            // ===================== 修复后的displayResult函数（终极版） =====================
+            function displayResult(data) {
+                // 调试：按F12在控制台查看后端返回的完整数据
+                console.log("后端返回的数据:", data);
+
+                if (data.success) {
+                    let platesHtml = '';
+                    if (data.plate && data.plate.length > 0) {
+                        const validPlates = data.plate.filter(p => p && p !== '未识别到车牌');
+                        if (validPlates.length > 0) {
+                            platesHtml = validPlates.map(p => `<div class="plate-tag">${p}</div>`).join('');
+                        } else {
+                            platesHtml = '<p style="color:#718096;">未识别到有效车牌</p>';
+                        }
+                    } else {
+                        platesHtml = '<p style="color:#718096;">未识别到车牌</p>';
+                    }
+
+                    let mediaHtml = '';
+                    let videoLinkHtml = '';
+
+                    if (data.file_type === 'image') {
+                        // 图片链接加时间戳防止缓存
+                        mediaHtml = `<img src="${data.file_url}?t=${new Date().getTime()}" class="result-media" alt="识别结果">`;
+                    } else {
+                        if (data.frame_url) {
+                            // 关键帧链接加时间戳防止缓存
+                            mediaHtml = `<img src="${data.frame_url}?t=${new Date().getTime()}" class="result-media" alt="视频关键帧">`;
+                        } else {
+                            mediaHtml = `<div class="placeholder-icon">🎬</div><p>视频处理完成</p>`;
+                        }
+                        // 终极修复：使用后端返回的正确file_url，加时间戳彻底防止缓存
+                        const videoUrl = data.file_url + '?t=' + new Date().getTime();
+                        videoLinkHtml = `<a href="${videoUrl}" target="_blank" class="video-link">📥 下载/查看完整标注视频</a>`;
+                    }
+
+                    resultArea.innerHTML = `
+                        <div class="result-content">
+                            ${mediaHtml}
+                            <div class="plate-info">
+                                <p style="font-size: 14px; color: #718096; margin-bottom: 12px;">识别到的车牌号码</p>
+                                <div class="plate-list">
+                                    ${platesHtml}
+                                </div>
+                                <!-- 修复：正确显示处理耗时，兜底为0 -->
+                                <p class="process-info">处理耗时: ${data.process_time || 0} 秒</p>
+                            </div>
+                            ${videoLinkHtml}
+                        </div>
+                    `;
+                } else {
+                    resultArea.innerHTML = `
+                        <div style="color: #e53e3e; padding: 20px;">
+                            <p style="font-size: 16px;">❌ 识别失败</p>
+                            <p style="font-size: 12px; margin-top: 8px;">${data.error || '未知错误'}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            // 从数据库加载历史记录
+            async function loadHistoryFromDB() {
+                try {
+                    const response = await fetch(RECORDS_API_URL);
+                    if (response.ok) {
+                        historyRecords = await response.json();
+                        // 将后端返回的逗号分隔车牌字符串转换为数组
+                        historyRecords.forEach(record => {
+                            if (record.plate_number) {
+                                record.plate = record.plate_number.split(',');
+                            } else {
+                                record.plate = [];
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('加载历史记录失败:', error);
+                    historyRecords = [];
+                }
+            }
+
+            function updateStats() {
+                const today = new Date().toDateString();
+                const todayRecords = historyRecords.filter(r => new Date(r.create_time).toDateString() === today);
+                const successRecords = historyRecords.filter(r => r.plate && r.plate.length > 0 && !r.plate.includes('未识别到车牌'));
+
+                todayCountEl.textContent = todayRecords.length;
+                totalCountEl.textContent = historyRecords.length;
+                successRateEl.textContent = historyRecords.length > 0
+                    ? Math.round((successRecords.length / historyRecords.length) * 100) + '%'
+                    : '--';
+            }
+
+            function renderHistory() {
+                if (historyRecords.length === 0) {
+                    historyList.innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: #718096;">
+                            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">📭</div>
+                            <p>暂无识别记录</p>
+                            <p style="font-size: 12px; margin-top: 8px;">快去识别一些车牌吧！</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                historyList.innerHTML = historyRecords.map(record => {
+                    const date = new Date(record.create_time);
+                    const timeStr = date.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    const validPlates = (record.plate || []).filter(p => p && p !== '未识别到车牌');
+                    const platesHtml = validPlates.length > 0
+                        ? validPlates.map(p => `<span class="history-plate-tag">${p}</span>`).join('')
+                        : '<span style="color:#718096; font-size:12px;">未识别到车牌</span>';
+
+                    const typeBadgeClass = record.file_type === 'image' ? 'type-image' : 'type-video';
+                    const typeIcon = record.file_type === 'image' ? '🖼️' : '🎬';
+
+                    return `
+                        <div class="history-item" data-id="${record.id}">
+                            <div class="history-item-header">
+                                <span class="history-type-badge ${typeBadgeClass}">${typeIcon} ${record.file_type === 'image' ? '图片' : '视频'}</span>
+                                <span class="history-time">${timeStr}</span>
+                            </div>
+                            <div class="history-plates">
+                                ${platesHtml}
+                            </div>
+                            <div class="history-footer">
+                                <button class="view-btn" onclick="viewRecord(${record.id})">👁️ 查看结果</button>
+                                <button class="delete-btn" onclick="deleteRecord(${record.id})">删除</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            window.viewRecord = function(id) {
+                const record = historyRecords.find(r => r.id === id);
+                if (!record) return;
+
+                let mediaHtml = '';
+                if (record.file_type === 'image') {
+                    mediaHtml = `<img src="${record.result_image_path}" class="modal-media" alt="识别结果">`;
+                } else {
+                    if (record.result_image_path) {
+                        mediaHtml = `<img src="${record.result_image_path}" class="modal-media" alt="关键帧">`;
+                    }
+                    if (record.file_path) {
+                        // 视频文件路径需要转换为可访问的URL
+                        const videoUrl = `/results/${record.file_name.replace(/^result_/, '')}`;
+                        mediaHtml += `<a href="${videoUrl}" target="_blank" class="video-link" style="display:inline-block; margin-top:10px;">📥 查看完整标注视频</a>`;
+                    }
+                }
+
+                const validPlates = (record.plate || []).filter(p => p && p !== '未识别到车牌');
+                const platesHtml = validPlates.length > 0
+                    ? validPlates.map(p => `<span class="plate-tag">${p}</span>`).join('')
+                    : '<p style="color:#718096;">未识别到车牌</p>';
+
+                modalBody.innerHTML = `
+                    <h3 style="margin-bottom: 16px; color:#63b3ed;">识别记录详情</h3>
+                    ${mediaHtml}
+                    <div class="plate-info" style="margin-top:16px;">
+                        <p style="font-size: 14px; color: #718096; margin-bottom: 12px;">识别到的车牌号码</p>
+                        <div class="plate-list">
+                            ${platesHtml}
+                        </div>
+                        <p class="process-info">处理耗时: ${record.process_time || '未知'} 秒</p>
+                    </div>
+                `;
+                modalOverlay.style.display = 'flex';
+            };
+
+            window.deleteRecord = async function(id) {
+                if (confirm('确定要删除这条记录吗？')) {
+                    try {
+                        const response = await fetch(`${RECORDS_API_URL}/${id}`, {
+                            method: 'DELETE'
+                        });
+                        if (response.ok) {
+                            // 重新加载历史记录
+                            await loadHistoryFromDB();
+                            renderHistory();
+                            updateStats();
+                        }
+                    } catch (error) {
+                        console.error('删除记录失败:', error);
+                    }
                 }
             };
-            reader.readAsDataURL(file);
-        }
 
-        // 重置上传状态
-        function resetUploadState() {
-            selectedFile = null;
-            videoResultUrl = "";
-            fileInput.value = '';
-            uploadContent.classList.remove('hidden');
-            previewContainer.classList.add('hidden');
-            recognizeBtn.classList.add('hidden');
-            loadingState.classList.add('hidden');
-            resultCard.classList.add('hidden');
-            uploadArea.classList.remove('bg-primary/20');
-            previewImage.src = '';
-            previewVideo.src = '';
-            resultImage.src = '';
-            resultFrame.src = '';
-            resultVideo.src = '';
-            resultImage.classList.add('hidden');
-            resultFrame.classList.add('hidden');
-            resultVideo.classList.add('hidden');
-            videoTip.classList.add('hidden');
-            playVideoBtn.classList.add('hidden');
-        }
+            clearHistoryBtn.addEventListener('click', async function() {
+                if (historyRecords.length === 0) return;
+                if (confirm('确定要清空所有识别记录吗？此操作不可恢复。')) {
+                    try {
+                        const response = await fetch(RECORDS_API_URL, {
+                            method: 'DELETE'
+                        });
+                        if (response.ok) {
+                            // 重新加载历史记录
+                            await loadHistoryFromDB();
+                            renderHistory();
+                            updateStats();
+                        }
+                    } catch (error) {
+                        console.error('清空记录失败:', error);
+                    }
+                }
+            });
 
-        // 开始识别
-        function startRecognition() {
-            if (!selectedFile) return;
+            modalClose.addEventListener('click', function() {
+                modalOverlay.style.display = 'none';
+            });
 
-            // 显示加载状态
-            recognizeBtn.classList.add('hidden');
-            loadingState.classList.remove('hidden');
-            if (fileType === 'video') {
-                loadingText.textContent = '视频处理中（提取关键帧+识别）...请稍候';
+            modalOverlay.addEventListener('click', function(e) {
+                if (e.target === modalOverlay) {
+                    modalOverlay.style.display = 'none';
+                }
+            });
+
+            // ===================== 真实仪表盘 + 真实日志功能 =====================
+            function updateRealDashboard() {
+                const today = document.getElementById('today-count').textContent;
+                const total = document.getElementById('total-count').textContent;
+                const rate = document.getElementById('success-rate').textContent;
+
+                document.getElementById('dash-today').innerText = today;
+                document.getElementById('dash-total').innerText = total;
+                document.getElementById('dash-rate').innerText = rate;
             }
 
-            // 构建FormData
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-            formData.append('file_type', fileType);
+            function addRealLog(msg, success = true) {
+                const logBox = document.getElementById('real-log-list');
+                const now = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+                const logItem = document.createElement('div');
+                logItem.style.fontSize = '12px';
+                logItem.style.color = '#a0aec0';
+                logItem.style.marginBottom = '8px';
+                logItem.innerHTML = `[${now}] ${msg} ${success ? '✅' : '❌'}`;
+                logBox.appendChild(logItem);
+                logBox.scrollTop = logBox.scrollHeight;
+            }
 
-            // 记录开始时间
-            const startTime = Date.now();
+            const _oldDisplayResult = displayResult;
+            displayResult = function(data) {
+                _oldDisplayResult(data);
 
-            // 发送请求
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    throw new Error(data.error || '识别失败');
-                }
-                // 计算耗时
-                const endTime = Date.now();
-                const cost = ((endTime - startTime) / 1000).toFixed(2) + ' 秒';
+                if (data.success) {
+                    const speed = (parseFloat(data.process_time || 0) * 1000).toFixed(0);
+                    document.getElementById('dash-speed').innerText = speed + ' ms';
 
-                // 显示结果
-                loadingState.classList.add('hidden');
-                resultCard.classList.remove('hidden');
-
-                // 显示结果预览（区分图片/视频）
-                if (data.file_type === 'image') {
-                    // 图片识别：显示标注后的图片
-                    resultImage.src = data.file_url;
-                    resultImage.classList.remove('hidden');
-                    resultFrame.classList.add('hidden');
-                    resultVideo.classList.add('hidden');
-                    videoTip.classList.add('hidden');
-                    playVideoBtn.classList.add('hidden');
-                } else {
-                    // 视频识别：优先显示关键帧图片
-                    videoResultUrl = data.file_url;
-                    if (data.frame_url) {
-                        resultFrame.src = data.frame_url;
-                        resultFrame.classList.remove('hidden');
-                        videoTip.classList.remove('hidden');
-                        playVideoBtn.classList.remove('hidden');
-                    } else {
-                        // 无关键帧时显示视频
-                        resultVideo.src = data.file_url;
-                        resultVideo.classList.remove('hidden');
+                    let plateText = '未识别车牌';
+                    if (data.plate && data.plate.length > 0) {
+                        const valid = data.plate.filter(p => p && p !== '未识别到车牌');
+                        plateText = valid.length > 0 ? `识别车牌：${valid[0]}` : '未识别车牌';
                     }
-                    resultImage.classList.add('hidden');
+                    addRealLog(plateText, true);
+                } else {
+                    addRealLog('识别失败', false);
                 }
 
-                // 显示识别结果
-                plateResult.innerText = data.plate.join('\n'); // 支持多个车牌换行显示
-                timeCost.innerText = data.process_time + ' 秒';
-                fileName.innerText = selectedFile.name;
-
-                // 滚动到结果区域
-                resultCard.scrollIntoView({ behavior: 'smooth' });
-            })
-            .catch(error => {
-                loadingState.classList.add('hidden');
-                recognizeBtn.classList.remove('hidden');
-                alert('识别出错：' + error.message);
-                console.error('Error:', error);
-            });
-        }
+                updateRealDashboard();
+            };
+        });
     </script>
 </body>
 </html>
